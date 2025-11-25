@@ -53,8 +53,8 @@ To get started, we will focus on these foundational tasks:
 1.  [X] Initialize a new Vite project with TypeScript.
 2.  [X] Set up the basic Three.js scene with a skybox and initial lighting.
     *   **Note:** Skybox is currently using placeholder colors.
-3.  [W] Implement procedural voxel world generation.
-4.  [ ] Create the player's magic carpet and controller with physics-based flight.
+3.  [X] Implement procedural voxel world generation.
+4.  [W] Create the player's magic carpet and controller with physics-based flight.
 5.  [ ] Develop the resource and castle building system.
 6.  [ ] Implement the spellcasting system with terrain manipulation and combat spells.
 7.  [ ] Design and implement a modular AI system for enemies.

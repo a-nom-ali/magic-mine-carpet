@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import SimplexNoise from 'simplex-noise';
+import { createNoise2D } from 'simplex-noise';
 import { Resource, resourceProperties } from './resources';
 import Player from './player';
 
@@ -178,14 +178,14 @@ class Chunk {
 class World {
   private scene: THREE.Scene;
   private physicsWorld: CANNON.World;
-  private noise: SimplexNoise;
+  private noise: (x: number, y: number) => number;
   private chunks: Map<string, Chunk>;
   private player: Player;
 
   constructor(scene: THREE.Scene, physicsWorld: CANNON.World, player: Player) {
     this.scene = scene;
     this.physicsWorld = physicsWorld;
-    this.noise = new SimplexNoise();
+    this.noise = createNoise2D();
     this.chunks = new Map();
     this.player = player;
   }
@@ -230,7 +230,7 @@ class World {
   private generateChunk(chunk: Chunk, chunkX: number, chunkZ: number) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
-        const height = Math.floor(this.noise.noise2D((chunkX * CHUNK_SIZE + x) / 50, (chunkZ * CHUNK_SIZE + z) / 50) * 10) + 20;
+        const height = Math.floor(this.noise((chunkX * CHUNK_SIZE + x) / 50, (chunkZ * CHUNK_SIZE + z) / 50) * 10) + 20;
         for (let y = 0; y < height; y++) {
           chunk.setBlock(x, y, z, Block.Stone);
         }

@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import Inventory from './inventory';
 
 class Player {
   public mesh: THREE.Mesh;
   public body: CANNON.Body;
+  public inventory: Inventory;
 
   private camera: THREE.PerspectiveCamera;
   private input: { [key: string]: boolean };
@@ -11,6 +13,7 @@ class Player {
   constructor(scene: THREE.Scene, world: CANNON.World, camera: THREE.PerspectiveCamera) {
     this.camera = camera;
     this.input = {};
+    this.inventory = new Inventory();
 
     // Create the magic carpet model
     const geometry = new THREE.BoxGeometry(2, 0.1, 3);

@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import SimplexNoise from 'simplex-noise';
 import { Resource, resourceProperties } from './resources';
+import Player from './player';
 
 const CHUNK_SIZE = 16;
 const WORLD_HEIGHT = 64;
 
-enum Block {
+export enum Block {
   Air,
   Stone,
   Wood,
@@ -179,12 +180,14 @@ class World {
   private physicsWorld: CANNON.World;
   private noise: SimplexNoise;
   private chunks: Map<string, Chunk>;
+  private player: Player;
 
-  constructor(scene: THREE.Scene, physicsWorld: CANNON.World) {
+  constructor(scene: THREE.Scene, physicsWorld: CANNON.World, player: Player) {
     this.scene = scene;
     this.physicsWorld = physicsWorld;
     this.noise = new SimplexNoise();
     this.chunks = new Map();
+    this.player = player;
   }
 
   public generate() {
@@ -201,17 +204,26 @@ class World {
     return this.chunks.get(`${chunkX},${chunkZ}`);
   }
 
-  public removeBlock(x: number, y: number, z: number) {
-    const chunkX = Math.floor(x / CHUNK_SIZE);
-    const chunkZ = Math.floor(z / CHUNK_SIZE);
+  public removeBlock(hitPoint: CANNON.Vec3, normal: CANNON.Vec3) {
+    const pos = hitPoint.vsub(normal.scale(0.5));
+    const chunkX = Math.floor(pos.x / CHUNK_SIZE);
+    const chunkZ = Math.floor(pos.z / CHUNK_SIZE);
     const chunk = this.getChunk(chunkX, chunkZ);
     if (chunk) {
-      const blockX = x % CHUNK_SIZE;
-      const blockY = y;
-      const blockZ = z % CHUNK_SIZE;
-      chunk.setBlock(blockX, blockY, blockZ, Block.Air);
-      chunk.updateMesh();
-      chunk.updatePhysics();
+      const blockX = Math.floor(pos.x) % CHUNK_SIZE;
+      const blockY = Math.floor(pos.y);
+      const blockZ = Math.floor(pos.z) % CHUNK_SIZE;
+      const block = chunk.getBlock(blockX, blockY, blockZ);
+      if (block !== Block.Air) {
+        chunk.setBlock(blockX, blockY, blockZ, Block.Air);
+        chunk.updateMesh();
+        chunk.updatePhysics();
+        if (block === Block.Stone) {
+          this.player.inventory.addResource(Resource.Stone, 1);
+        } else if (block === Block.Wood) {
+          this.player.inventory.addResource(Resource.Wood, 1);
+        }
+      }
     }
   }
 

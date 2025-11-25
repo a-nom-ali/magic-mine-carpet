@@ -27,10 +27,9 @@ class Game {
     this.setupSkybox();
     this.setupLighting();
 
-    this.world = new World(this.scene, this.physicsWorld);
-    this.world.generate();
-
     this.player = new Player(this.scene, this.physicsWorld, this.camera);
+    this.world = new World(this.scene, this.physicsWorld, this.player);
+    this.world.generate();
 
     window.addEventListener('resize', this.onWindowResize.bind(this), false);
     window.addEventListener('mousedown', (e) => {
@@ -79,15 +78,8 @@ class Game {
       const ray = new CANNON.Ray(projectile.body.previousPosition, projectile.body.position);
       if (this.physicsWorld.raycastClosest(ray.from, ray.to, {}, result)) {
         const hitPoint = result.hitPointWorld;
-        const chunk = this.world.getChunk(Math.floor(hitPoint.x / 16), Math.floor(hitPoint.z / 16));
-        if (chunk) {
-          const blockX = Math.floor(hitPoint.x) % 16;
-          const blockY = Math.floor(hitPoint.y);
-          const blockZ = Math.floor(hitPoint.z) % 16;
-          chunk.setBlock(blockX, blockY, blockZ, 0);
-          chunk.updateMesh();
-          chunk.updatePhysics();
-        }
+        const normal = result.hitNormalWorld;
+        this.world.removeBlock(hitPoint, normal);
 
         this.scene.remove(projectile.mesh);
         this.physicsWorld.removeBody(projectile.body);

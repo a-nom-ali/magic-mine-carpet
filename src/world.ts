@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import SimplexNoise from 'simplex-noise';
 
 const CHUNK_SIZE = 16;
@@ -10,71 +11,72 @@ enum Block {
 }
 
 class Chunk {
-  public mesh: THREE.InstancedMesh;
-  private data: Block[][][];
+  public mesh: THREE.Mesh;
+  public body: CANNON.Body;
+  private data: number[][];
 
-  constructor(scene: THREE.Scene, private x: number, private z: number) {
+  constructor(scene: THREE.Scene, world: CANNON.World, private x: number, private z: number) {
     this.data = this.initData();
     this.mesh = this.createMesh(scene);
+    this.body = this.createBody(world);
   }
 
-  private initData(): Block[][][] {
-    const data: Block[][][] = [];
+  private initData(): number[][] {
+    const data: number[][] = [];
     for (let x = 0; x < CHUNK_SIZE; x++) {
       data[x] = [];
-      for (let y = 0; y < WORLD_HEIGHT; y++) {
-        data[x][y] = [];
-        for (let z = 0; z < CHUNK_SIZE; z++) {
-          data[x][y][z] = Block.Air;
-        }
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        data[x][z] = 0;
       }
     }
     return data;
   }
 
-  public setBlock(x: number, y: number, z: number, block: Block) {
-    this.data[x][y][z] = block;
+  public setHeight(x: number, z: number, height: number) {
+    this.data[x][z] = height;
   }
 
-  public getBlock(x: number, y: number, z: number): Block {
-    return this.data[x][y][z];
-  }
-
-  private createMesh(scene: THREE.Scene): THREE.InstancedMesh {
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+  private createMesh(scene: THREE.Scene): THREE.Mesh {
+    const geometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE - 1, CHUNK_SIZE - 1);
+    geometry.rotateX(-Math.PI / 2);
     const material = new THREE.MeshStandardMaterial({ color: 0x808080 });
-    const mesh = new THREE.InstancedMesh(geometry, material, CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT);
-    mesh.position.set(this.x * CHUNK_SIZE, 0, this.z * CHUNK_SIZE);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(this.x * CHUNK_SIZE + CHUNK_SIZE / 2, 0, this.z * CHUNK_SIZE + CHUNK_SIZE / 2);
     scene.add(mesh);
     return mesh;
   }
 
+  private createBody(world: CANNON.World): CANNON.Body {
+    const shape = new CANNON.Heightfield(this.data, {
+      elementSize: 1,
+    });
+    const body = new CANNON.Body({ mass: 0 });
+    body.addShape(shape);
+    body.position.set(this.x * CHUNK_SIZE, 0, this.z * CHUNK_SIZE);
+    world.addBody(body);
+    return body;
+  }
+
   public updateMesh() {
-    let i = 0;
-    const matrix = new THREE.Matrix4();
-    for (let x = 0; x < CHUNK_SIZE; x++) {
-      for (let y = 0; y < WORLD_HEIGHT; y++) {
-        for (let z = 0; z < CHUNK_SIZE; z++) {
-          if (this.data[x][y][z] !== Block.Air) {
-            matrix.setPosition(x, y, z);
-            this.mesh.setMatrixAt(i, matrix);
-            i++;
-          }
-        }
-      }
+    for (let i = 0; i < this.mesh.geometry.attributes.position.count; i++) {
+      const x = i % CHUNK_SIZE;
+      const z = Math.floor(i / CHUNK_SIZE);
+      (this.mesh.geometry.attributes.position.array as any)[i * 3 + 1] = this.data[x][z];
     }
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.mesh.count = i;
+    this.mesh.geometry.attributes.position.needsUpdate = true;
+    this.mesh.geometry.computeVertexNormals();
   }
 }
 
 class World {
   private scene: THREE.Scene;
+  private physicsWorld: CANNON.World;
   private noise: SimplexNoise;
   private chunks: Map<string, Chunk>;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, physicsWorld: CANNON.World) {
     this.scene = scene;
+    this.physicsWorld = physicsWorld;
     this.noise = new SimplexNoise();
     this.chunks = new Map();
   }
@@ -82,7 +84,7 @@ class World {
   public generate() {
     for (let x = 0; x < 2; x++) {
       for (let z = 0; z < 2; z++) {
-        const chunk = new Chunk(this.scene, x, z);
+        const chunk = new Chunk(this.scene, this.physicsWorld, x, z);
         this.generateChunk(chunk, x, z);
         this.chunks.set(`${x},${z}`, chunk);
       }
@@ -93,9 +95,7 @@ class World {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const height = Math.floor(this.noise.noise2D((chunkX * CHUNK_SIZE + x) / 50, (chunkZ * CHUNK_SIZE + z) / 50) * 10) + 20;
-        for (let y = 0; y < height; y++) {
-          chunk.setBlock(x, y, z, Block.Stone);
-        }
+        chunk.setHeight(x, z, height);
       }
     }
     chunk.updateMesh();

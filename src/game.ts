@@ -1,11 +1,15 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import World from './world';
+import Player from './player';
 
 class Game {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
+  private physicsWorld: CANNON.World;
   private world: World;
+  private player: Player;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -14,13 +18,17 @@ class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
 
+    this.physicsWorld = new CANNON.World({
+      gravity: new CANNON.Vec3(0, -9.82, 0),
+    });
+
     this.setupSkybox();
     this.setupLighting();
 
-    this.world = new World(this.scene);
+    this.world = new World(this.scene, this.physicsWorld);
     this.world.generate();
 
-    this.camera.position.z = 5;
+    this.player = new Player(this.scene, this.physicsWorld, this.camera);
 
     window.addEventListener('resize', this.onWindowResize.bind(this), false);
 
@@ -48,6 +56,9 @@ class Game {
 
   private animate() {
     requestAnimationFrame(this.animate.bind(this));
+
+    this.physicsWorld.step(1 / 60);
+    this.player.update();
 
     this.renderer.render(this.scene, this.camera);
   }

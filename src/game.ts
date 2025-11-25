@@ -28,16 +28,7 @@ class Game {
   }
 
   private setupSkybox() {
-    const loader = new THREE.CubeTextureLoader();
-    const texture = loader.load([
-      'skybox/right.png',
-      'skybox/left.png',
-      'skybox/top.png',
-      'skybox/bottom.png',
-      'skybox/front.png',
-      'skybox/back.png',
-    ]);
-    this.scene.background = texture;
+    this.scene.background = new THREE.Color(0x87ceeb); // Sky blue color
   }
 
   private setupLighting() {

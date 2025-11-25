@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import World from './world';
 import Player from './player';
 import Projectile from './projectile';
+import UI from './ui';
 
 class Game {
   private scene: THREE.Scene;
@@ -12,6 +13,7 @@ class Game {
   private world: World;
   private player: Player;
   private projectiles: Projectile[] = [];
+  private ui: UI;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -30,6 +32,8 @@ class Game {
     this.player = new Player(this.scene, this.physicsWorld, this.camera);
     this.world = new World(this.scene, this.physicsWorld, this.player);
     this.world.generate();
+
+    this.ui = new UI(this.player.inventory);
 
     window.addEventListener('resize', this.onWindowResize.bind(this), false);
     window.addEventListener('mousedown', (e) => {
@@ -68,6 +72,7 @@ class Game {
 
     this.physicsWorld.step(1 / 60);
     this.player.update();
+    this.ui.render();
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];

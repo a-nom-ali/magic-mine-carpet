@@ -155,8 +155,18 @@ class Chunk {
         for (let x = 0; x < CHUNK_SIZE; x++) {
           const block = this.getBlock(x, y, z);
           if (block !== Block.Air) {
-            const shape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
-            this.body.addShape(shape, new CANNON.Vec3(x + 0.5, y + 0.5, z + 0.5));
+            const isExposed =
+              this.getBlock(x + 1, y, z) === Block.Air ||
+              this.getBlock(x - 1, y, z) === Block.Air ||
+              this.getBlock(x, y + 1, z) === Block.Air ||
+              this.getBlock(x, y - 1, z) === Block.Air ||
+              this.getBlock(x, y, z + 1) === Block.Air ||
+              this.getBlock(x, y, z - 1) === Block.Air;
+
+            if (isExposed) {
+              const shape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
+              this.body.addShape(shape, new CANNON.Vec3(x + 0.5, y + 0.5, z + 0.5));
+            }
           }
         }
       }

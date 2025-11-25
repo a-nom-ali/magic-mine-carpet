@@ -197,6 +197,24 @@ class World {
     }
   }
 
+  public getChunk(chunkX: number, chunkZ: number): Chunk | undefined {
+    return this.chunks.get(`${chunkX},${chunkZ}`);
+  }
+
+  public removeBlock(x: number, y: number, z: number) {
+    const chunkX = Math.floor(x / CHUNK_SIZE);
+    const chunkZ = Math.floor(z / CHUNK_SIZE);
+    const chunk = this.getChunk(chunkX, chunkZ);
+    if (chunk) {
+      const blockX = x % CHUNK_SIZE;
+      const blockY = y;
+      const blockZ = z % CHUNK_SIZE;
+      chunk.setBlock(blockX, blockY, blockZ, Block.Air);
+      chunk.updateMesh();
+      chunk.updatePhysics();
+    }
+  }
+
   private generateChunk(chunk: Chunk, chunkX: number, chunkZ: number) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {

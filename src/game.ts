@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import World from './world';
 import Player from './player';
+import Projectile from './projectile';
 
 class Game {
   private scene: THREE.Scene;
@@ -10,6 +11,7 @@ class Game {
   private physicsWorld: CANNON.World;
   private world: World;
   private player: Player;
+  private projectiles: Projectile[] = [];
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -31,6 +33,14 @@ class Game {
     this.player = new Player(this.scene, this.physicsWorld, this.camera);
 
     window.addEventListener('resize', this.onWindowResize.bind(this), false);
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        const position = this.player.body.position.clone().vadd(new CANNON.Vec3(forward.x, forward.y, forward.z).scale(2));
+        const velocity = new CANNON.Vec3(forward.x, forward.y, forward.z).scale(50);
+        this.projectiles.push(new Projectile(this.scene, this.physicsWorld, position as any, velocity as any));
+      }
+    });
 
     this.animate();
   }
@@ -59,6 +69,31 @@ class Game {
 
     this.physicsWorld.step(1 / 60);
     this.player.update();
+
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+      projectile.update();
+
+      const { x, y, z } = projectile.body.position;
+      const result = new CANNON.RaycastResult();
+      const ray = new CANNON.Ray(projectile.body.previousPosition, projectile.body.position);
+      if (this.physicsWorld.raycastClosest(ray.from, ray.to, {}, result)) {
+        const hitPoint = result.hitPointWorld;
+        const chunk = this.world.getChunk(Math.floor(hitPoint.x / 16), Math.floor(hitPoint.z / 16));
+        if (chunk) {
+          const blockX = Math.floor(hitPoint.x) % 16;
+          const blockY = Math.floor(hitPoint.y);
+          const blockZ = Math.floor(hitPoint.z) % 16;
+          chunk.setBlock(blockX, blockY, blockZ, 0);
+          chunk.updateMesh();
+          chunk.updatePhysics();
+        }
+
+        this.scene.remove(projectile.mesh);
+        this.physicsWorld.removeBody(projectile.body);
+        this.projectiles.splice(i, 1);
+      }
+    }
 
     this.renderer.render(this.scene, this.camera);
   }
